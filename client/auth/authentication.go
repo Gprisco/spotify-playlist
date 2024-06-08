@@ -9,10 +9,6 @@ type CommandExecutor interface {
 	executeCommand(string) error
 }
 
-type PkceGenerator interface {
-	generate() string
-}
-
 type Authenticator struct {
 	clientId        string
 	redirectUrl     string
@@ -51,9 +47,20 @@ func (a *Authenticator) Authenticate() {
 	q.Add("response_type", "code")
 	q.Add("scope", "user-read-private")
 	q.Add("code_challenge_method", "S256")
-	q.Add("code_challenge", a.pkceGenerator.generate())
+
+	verifier, err := a.pkceGenerator.GenerateCodeVerifier()
+
+	if err != nil {
+		panic(err)
+	}
+
+	q.Add("code_challenge", a.pkceGenerator.GenerateCodeChallenge(verifier))
 
 	request.URL.RawQuery = q.Encode()
 
-	a.commandExecutor.executeCommand(fmt.Sprintf("open %s", request.URL.String()))
+	err = a.commandExecutor.executeCommand(fmt.Sprintf("open %s", request.URL.String()))
+
+	if err != nil {
+		panic(err)
+	}
 }

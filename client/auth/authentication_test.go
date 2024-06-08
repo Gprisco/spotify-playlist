@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 )
@@ -21,10 +22,21 @@ func (m MockCommandExecutor) executeCommand(command string) error {
 
 // Mock PKCE Generator
 type MockPkceGenerator struct {
-	pkce string
+	pkce     string
+	verifier string
+
+	verifierError error
 }
 
-func (m MockPkceGenerator) generate() string {
+func (m MockPkceGenerator) GenerateCodeVerifier() (string, error) {
+	return m.verifier, m.verifierError
+}
+
+func (m MockPkceGenerator) GenerateCodeChallenge(verifier string) string {
+	if m.verifier != verifier {
+		panic("It should use the generated verifier")
+	}
+
 	return m.pkce
 }
 
@@ -32,7 +44,7 @@ func TestAuthenticator(t *testing.T) {
 	t.Run("it should open a browser window to the correct URL",
 		func(t *testing.T) {
 			// Given a pkce generator
-			pkceGenerator := MockPkceGenerator{"pkce"}
+			pkceGenerator := MockPkceGenerator{"pkce", "verifier", nil}
 
 			// and a command executor expecting the correct command
 			successfulCommandExecutor := MockCommandExecutor{
@@ -55,13 +67,85 @@ func TestAuthenticator(t *testing.T) {
 				pkceGenerator,
 			)
 
+			// Then it should match the expected command
+			defer func() {
+				if r := recover(); r != nil {
+					t.Error() // Message will be printed by the panic
+				}
+			}()
+
 			// When starting the authentication flow
 			authenticator.Authenticate()
+		},
+	)
 
-			// Then it should match the expected command
-			if r := recover(); r != nil {
-				t.Error() // Message will be printed by the panic
+	t.Run("it should panic when pkce generator returns an error",
+		func(t *testing.T) {
+			// Given a pkce generator which returns an error
+			pkceGenerator := MockPkceGenerator{
+				"ignored",
+				"ignored",
+				errors.New("Error generating the verifier"),
 			}
+
+			// and a command executor
+			successfulCommandExecutor := MockCommandExecutor{
+				"ignored",
+				nil,
+			}
+
+			// and an authenticator using it
+			authenticator := NewAuthenticator(
+				"clientId",
+				"redirectUrl",
+				successfulCommandExecutor,
+				pkceGenerator,
+			)
+
+			// Then it should recover from a panic
+			defer func() {
+				if r := recover(); r == nil {
+					t.Error()
+				}
+			}()
+
+			// When starting the authentication flow
+			authenticator.Authenticate()
+		},
+	)
+
+	t.Run("it should panic when the command executor returns an error",
+		func(t *testing.T) {
+			// Given a pkce generator which returns no error
+			pkceGenerator := MockPkceGenerator{
+				"ignored",
+				"ignored",
+				nil,
+			}
+
+			// and a command executor which returns an error
+			successfulCommandExecutor := MockCommandExecutor{
+				"ignored",
+				errors.New("Command execution error"),
+			}
+
+			// and an authenticator using it
+			authenticator := NewAuthenticator(
+				"clientId",
+				"redirectUrl",
+				successfulCommandExecutor,
+				pkceGenerator,
+			)
+
+			// Then it should recover from a panic
+			defer func() {
+				if r := recover(); r == nil {
+					t.Error()
+				}
+			}()
+
+			// When starting the authentication flow
+			authenticator.Authenticate()
 		},
 	)
 }
