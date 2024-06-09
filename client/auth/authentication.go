@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 )
@@ -30,7 +31,28 @@ func NewAuthenticator(
 	}
 }
 
-func (a *Authenticator) Authenticate() {
+// Authenticate() starts the OAuth2 authentication flow using PKCE method
+func (a *Authenticator) Authenticate() error {
+	request, err := a.buildRequest()
+
+	if err != nil {
+		return err
+	}
+
+	// Open a browser window using the `open` command
+	err = a.commandExecutor.executeCommand(fmt.Sprintf("open %s", request.URL.String()))
+
+	if err != nil {
+		return errors.New(fmt.Sprintf(
+			"Error opening browser window: %s",
+			err.Error(),
+		))
+	}
+
+	return nil
+}
+
+func (a *Authenticator) buildRequest() (*http.Request, error) {
 	request, err := http.NewRequest(
 		http.MethodGet,
 		"https://accounts.spotify.com/authorize",
@@ -38,7 +60,10 @@ func (a *Authenticator) Authenticate() {
 	)
 
 	if err != nil {
-		panic(err)
+		return nil, errors.New(fmt.Sprintf(
+			"Error in creating the http request %s",
+			err.Error(),
+		))
 	}
 
 	q := request.URL.Query()
@@ -48,19 +73,19 @@ func (a *Authenticator) Authenticate() {
 	q.Add("scope", "user-read-private")
 	q.Add("code_challenge_method", "S256")
 
+	// Generate a code verifier using the provided generator
 	verifier, err := a.pkceGenerator.GenerateCodeVerifier()
 
 	if err != nil {
-		panic(err)
+		return nil, errors.New(fmt.Sprintf(
+			"Error generating the code verifier: %s",
+			err.Error(),
+		))
 	}
 
 	q.Add("code_challenge", a.pkceGenerator.GenerateCodeChallenge(verifier))
 
 	request.URL.RawQuery = q.Encode()
 
-	err = a.commandExecutor.executeCommand(fmt.Sprintf("open %s", request.URL.String()))
-
-	if err != nil {
-		panic(err)
-	}
+	return request, nil
 }

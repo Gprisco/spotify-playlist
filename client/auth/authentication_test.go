@@ -14,7 +14,7 @@ type MockCommandExecutor struct {
 
 func (m MockCommandExecutor) executeCommand(command string) error {
 	if command != m.expectedCommand {
-		panic(fmt.Sprintf("Expected\t%s\ngot\t\t%s", m.expectedCommand, command))
+		return errors.New(fmt.Sprintf("Expected\t%s\ngot\t\t%s", m.expectedCommand, command))
 	}
 
 	return m.errorReturned
@@ -67,19 +67,16 @@ func TestAuthenticator(t *testing.T) {
 				pkceGenerator,
 			)
 
-			// Then it should match the expected command
-			defer func() {
-				if r := recover(); r != nil {
-					t.Error() // Message will be printed by the panic
-				}
-			}()
-
 			// When starting the authentication flow
-			authenticator.Authenticate()
+			err := authenticator.Authenticate()
+
+			if err != nil {
+				t.Errorf("The authentication went wrong: %s", err.Error())
+			}
 		},
 	)
 
-	t.Run("it should panic when pkce generator returns an error",
+	t.Run("it should return an error when pkce generator returns an error",
 		func(t *testing.T) {
 			// Given a pkce generator which returns an error
 			pkceGenerator := MockPkceGenerator{
@@ -102,19 +99,16 @@ func TestAuthenticator(t *testing.T) {
 				pkceGenerator,
 			)
 
-			// Then it should recover from a panic
-			defer func() {
-				if r := recover(); r == nil {
-					t.Error()
-				}
-			}()
-
 			// When starting the authentication flow
-			authenticator.Authenticate()
+			err := authenticator.Authenticate()
+
+			if err == nil {
+				t.Errorf("The authentication did not return an error as expected")
+			}
 		},
 	)
 
-	t.Run("it should panic when the command executor returns an error",
+	t.Run("it should return an error when the command executor returns an error",
 		func(t *testing.T) {
 			// Given a pkce generator which returns no error
 			pkceGenerator := MockPkceGenerator{
@@ -137,15 +131,12 @@ func TestAuthenticator(t *testing.T) {
 				pkceGenerator,
 			)
 
-			// Then it should recover from a panic
-			defer func() {
-				if r := recover(); r == nil {
-					t.Error()
-				}
-			}()
-
 			// When starting the authentication flow
-			authenticator.Authenticate()
+			err := authenticator.Authenticate()
+
+			if err == nil {
+				t.Errorf("The authentication did not return an error as expected")
+			}
 		},
 	)
 }
