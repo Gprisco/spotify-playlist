@@ -1,6 +1,9 @@
 package auth
 
-import "sync"
+import (
+	"errors"
+	"sync"
+)
 
 var lock = &sync.Mutex{}
 
@@ -21,4 +24,30 @@ func GetCredentialStore() *Store {
 	}
 
 	return storeSingleton
+}
+
+func (s *Store) SetCode(code string) error {
+	if len(s.code) > 0 {
+		return errors.New("An authorization code was already present")
+	}
+
+	s.code = code
+	return nil
+}
+
+func (s *Store) GetCode() string {
+	return s.code
+}
+
+func (s *Store) SetToken(token string) error {
+	if len(s.token) > 0 {
+		return errors.New("An authorization code was already present")
+	}
+
+	s.token = token
+	return nil
+}
+
+func (s *Store) GetToken() string {
+	return s.token
 }
