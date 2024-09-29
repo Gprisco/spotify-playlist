@@ -1,4 +1,4 @@
-package auth
+package callback
 
 import "net/http"
 
@@ -7,11 +7,11 @@ type CallbackResult struct {
 	Err  string
 }
 
-type CallbackServer struct {
+type CallbackHandler struct {
 	channel chan *CallbackResult
 }
 
-func (p *CallbackServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (p *CallbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		// Asynchronously send the code query param back (and error if present)
