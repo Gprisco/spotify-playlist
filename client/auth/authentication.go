@@ -4,6 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
+
+	"prisco.dev/spotify-playlist/client/auth/callback"
 )
 
 type CommandExecutor interface {
@@ -15,6 +18,8 @@ type Authenticator struct {
 	redirectUrl     string
 	commandExecutor CommandExecutor
 	pkceGenerator   PkceGenerator
+	callbackHandler callback.CallbackHandler
+	credentialStore *Store
 }
 
 func NewAuthenticator(
@@ -22,12 +27,16 @@ func NewAuthenticator(
 	redirectUrl string,
 	commandExecutor CommandExecutor,
 	pkceGenerator PkceGenerator,
+	callbackHandler callback.CallbackHandler,
+	credentialsStore *Store,
 ) *Authenticator {
 	return &Authenticator{
 		clientId,
 		redirectUrl,
 		commandExecutor,
 		pkceGenerator,
+		callbackHandler,
+		credentialsStore,
 	}
 }
 
@@ -48,6 +57,15 @@ func (a *Authenticator) Authenticate() error {
 			err.Error(),
 		))
 	}
+
+	// Handle the OAuth 2 callback
+	callback := a.callbackHandler(30 * time.Second)
+
+	if callback.Err != "" {
+		return errors.New(callback.Err)
+	}
+
+	a.credentialStore.Code = callback.Code
 
 	return nil
 }

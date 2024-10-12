@@ -8,7 +8,7 @@ import (
 
 func HandleCallback(timeout time.Duration) *CallbackResult {
 	channel := make(chan *CallbackResult)
-	handler := &CallbackHandler{channel: channel}
+	handler := &CallbackContext{channel: channel}
 
 	// Spin up a server
 	server := http.Server{

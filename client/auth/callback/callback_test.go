@@ -11,7 +11,7 @@ func TestCallback(t *testing.T) {
 		channel := make(chan *CallbackResult)
 
 		// and a callback server
-		server := &CallbackHandler{channel: channel}
+		server := &CallbackContext{channel: channel}
 
 		// and a request
 		req := httptest.NewRequest("GET", "/callback?code=123code&error=mock-error", nil)

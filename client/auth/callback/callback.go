@@ -1,17 +1,22 @@
 package callback
 
-import "net/http"
+import (
+	"net/http"
+	"time"
+)
 
 type CallbackResult struct {
 	Code string
 	Err  string
 }
 
-type CallbackHandler struct {
+type CallbackContext struct {
 	channel chan *CallbackResult
 }
 
-func (p *CallbackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+type CallbackHandler func(timeout time.Duration) *CallbackResult
+
+func (p *CallbackContext) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		// Asynchronously send the code query param back (and error if present)
